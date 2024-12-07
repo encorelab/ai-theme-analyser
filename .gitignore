@@ -1,0 +1,21 @@
+input_files/*
+output_files/*
+__pycache__
+.DS_Store
+.env
+venv
+.Rhistory
+.gitignore.swp
+.vscode/
+archived_files/
+code_application.py
+codes copy.json
+codes.json
+design_paradigms.json
+log.txt
+research_question copy.txt
+research_question.txt
+test_ai_theme_analyzer.py
+themes copy.json
+themes.json
+within_case_analysis.py

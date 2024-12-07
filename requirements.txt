@@ -1,0 +1,7 @@
+google-cloud-aiplatform
+python-docx
+python-dotenv
+pandas
+openpyxl
+matplotlib
+networkx

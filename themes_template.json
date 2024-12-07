@@ -1,0 +1,32 @@
+[
+  {
+    "theme": "Interest in Technology",
+    "definition": "The student expresses a general interest in technology, computers, or how things work.",
+    "examples": "I've always been fascinated by how things work, taking apart electronics and trying to put them back together; I love exploring new gadgets and figuring out how they function; From a young age, I was drawn to computers and spent hours tinkering with software and hardware.",
+    "exclude": "Statements specifically related to engineering or a particular engineering discipline."
+  },
+  {
+    "theme": "Problem-Solving Skills",
+    "definition": "The student describes enjoying or excelling at problem-solving, critical thinking, or analytical tasks.",
+    "examples": "I love the challenge of solving puzzles and finding solutions to complex problems; I'm a logical thinker and enjoy breaking down challenges into smaller, manageable parts; I'm drawn to situations where I can use my analytical skills to find creative solutions.",
+    "exclude": "References to problem-solving solely within the context of engineering or a specific subject like math."
+  },
+  {
+    "theme": "Creativity and Innovation",
+    "definition": "The student expresses a desire to create, design, or invent new things.",
+    "examples": "I have a strong creative drive and enjoy coming up with new ideas; I'm always looking for ways to improve existing designs or invent something entirely new; I'm inspired by innovative technologies and want to contribute to the development of future advancements.",
+    "exclude": "Statements about creativity or innovation specifically within the context of engineering."
+  },
+  {
+    "theme": "Learning and Growth Mindset",
+    "definition": "The student demonstrates a passion for learning, exploring new concepts, and continuously improving their skills.",
+    "examples": "I'm eager to learn new things and expand my knowledge; I enjoy the challenge of mastering new skills and concepts; I believe in the importance of lifelong learning and personal growth.",
+    "exclude": "References to learning specific to engineering or academic subjects."
+  },
+  {
+    "theme": "Influence of Media",
+    "definition": "The student mentions being influenced by books, movies, TV shows, or video games related to technology or problem-solving.",
+    "examples": "I grew up watching sci-fi movies that sparked my imagination about the possibilities of technology; I was inspired by characters in books who used their intelligence and ingenuity to overcome challenges; Playing video games helped me develop my problem-solving skills and strategic thinking.",
+    "exclude": "Influences from family, teachers, or real-life individuals."
+  }
+]
