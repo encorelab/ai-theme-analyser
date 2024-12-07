@@ -50,8 +50,9 @@ GEMINI_MODEL=gemini-1.5-pro-002 # or your preferred model
 1. **Prepare Input Documents:**
 - Place your DOCX files in the input_files directory
 
-2. **Create themes.json:**
+2. **Create Prompt Payload Files:**
 - Create a themes.json file in the project directory, defining your themes and their definitions based on the structure in themes_template.json
+- Create a research_question.txt file in the project directory, defining your key research question based on the structure in research_question_template.txt
 
 3. **Run the Script:**
 - Use the --client argument to specify the analysis stage to run:
@@ -66,11 +67,6 @@ GEMINI_MODEL=gemini-1.5-pro-002 # or your preferred model
 4. **View Results:**
 - Analyzed data and visualizations will be saved in the output_files directory.
 
-## Running Tests
-To run the unit tests, use the following command:
-   ```bash
-   python -m unittest -v -f test_ai_emotion_analyzer.py  
-   ```
 # Important Notes
 - **Iterative Process:** Thematic analysis is iterative. You may need to refine codes and themes as you analyze more data.
 - **Customisation:** Adjust parameters like NUM_DOCS_FOR_CODE_GENERATION, BATCH_SIZE, and the content of themes.json to suit your specific needs and data.
