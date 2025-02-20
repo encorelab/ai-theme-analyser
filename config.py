@@ -14,14 +14,17 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 BATCH_SIZE = 1
 
 # Directory Setup
-INPUT_DIR = "input_files"
+INPUT_DIR = "input_files/2025 EngSci - Top 90 Percent"
 OUTPUT_DIR = "output_files"
 SPREADSHEET_FILENAME = "ParentSatisfaction_24Jun24.xlsx" #Modify as needed
 RESEARCH_QUESTION_FILE = "research_question.txt"
 CONSTRUCT_FILE = "construct.txt"
 
 # Stage 2: Initial Code Generation
-NUM_DOCS_FOR_CODE_GENERATION = 40
+NUM_DOCS_FOR_CODE_GENERATION = 23
+
+# Stage 3: 
+MERGE_CODES_GREATER_THAN = 30
 
 # Data Extraction Targets (modify as needed)
 SAFETY_SETTINGS = [
@@ -45,12 +48,12 @@ SAFETY_SETTINGS = [
 
 DEFAULT_GENERATION_CONFIG = {
     "max_output_tokens": 1024,
-    "temperature": 0,
-    "top_p": 0.95,
+    "temperature": 0.1,
+    "top_p": 0.3,
 }
 
 LARGE_GENERATION_CONFIG = {
     "max_output_tokens": 8192,
-    "temperature": 0,
-    "top_p": 0.95,
+    "temperature": 0.1,
+    "top_p": 0.3,
 }

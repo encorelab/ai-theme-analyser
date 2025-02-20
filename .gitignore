@@ -19,3 +19,12 @@ test_ai_theme_analyzer.py
 themes copy.json
 themes.json
 within_case_analysis.py
+theme_overview.png
+theme_subgraphs/
+within_case_network_graphs/
+helper_tools/
+class1_theme_graphs/
+class2_theme_graphs/
+class3_theme_graphs/
+class4_theme_graphs/
+class5_theme_graphs/
