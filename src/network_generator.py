@@ -4,7 +4,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Part, SafetySetting, FinishReason
 
 from config import PROJECT_ID, LOCATION, GEMINI_MODEL, LARGE_GENERATION_CONFIG, SAFETY_SETTINGS
-from utils import remove_json_markdown
+from src.utils import remove_json_markdown
 
 
 class ThemeGeneratorClient:

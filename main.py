@@ -5,14 +5,15 @@ import json
 import pandas as pd
 
 from config import *
-from code_generation import CodeGenerationClient
-from code_merger_client import CodeMergerClient
-from theme_generator import ThemeGeneratorClient
+from src.code_generation import CodeGenerationClient
+from src.code_merger_client import CodeMergerClient
+from src.theme_generator import ThemeGeneratorClient
+from src.intensity_generation import IntensityGenerationClient
 from code_application import ThematicCodingClient
-from within_case_analysis import IntraTextAnalyzerClient
-from report_generation import CrossDocumentAnalyzerClient
-from code_compressor_client import CodeCompressorClient
-from utils import (extract_paragraphs_from_docx, 
+from src.within_case_analysis import IntraTextAnalyzerClient
+from src.report_generation import CrossDocumentAnalyzerClient
+from src.code_compressor_client import CodeCompressorClient
+from src.utils import (extract_paragraphs_from_docx, 
                    write_coding_results_to_excel, 
                    generate_codes,
                    perform_analysis_and_reporting, 
@@ -41,59 +42,135 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
     output_file = os.path.join(OUTPUT_DIR, f"analyzed_results_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx")
     
     # Stage 2 - Part 1
-    if client_flag == "generate_initial_codes": 
+    if client_flag == "generate_initial_codes":
         code_generator = CodeGenerationClient()
-        themes = load_themes_from_file("themes.json") 
+
+        while True:  # Loop until a valid file is provided
+            themes_file_path = input("Enter the file path to the themes JSON file: ")
+
+            if not os.path.exists(themes_file_path):
+                print(f"Error: File '{themes_file_path}' does not exist. Please try again.")
+                continue  # Go back to the beginning of the loop
+
+            try:
+                themes = load_themes_from_file(themes_file_path)
+                break  # Exit the loop if themes are loaded successfully
+            except Exception as e:
+                print(f"Error loading themes from '{themes_file_path}': {e}. Please check the file and try again.")
+                continue #Go back to the beginning of the loop
+
         all_codes, all_files_excerpt_codings, new_codes_by_file = generate_codes(
-            directory, themes, code_generator, initial_codes={}, num_docs=NUM_DOCS_FOR_CODE_GENERATION) 
-    
-        
+            directory, themes, code_generator, initial_codes={}, num_docs=NUM_DOCS_FOR_CODE_GENERATION
+        )
+
         output_file = os.path.join(
             OUTPUT_DIR,
             f"initial_code_generation_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
         )
-        write_coding_results_to_excel(all_files_excerpt_codings,
-                                     new_codes_by_file, output_file)
+        write_coding_results_to_excel(all_files_excerpt_codings, new_codes_by_file, output_file)
         print(f"\nGenerated Codes:\n{all_codes}")
 
     # Stage 2 - Part 2
-    elif client_flag == "verify_initial_codes": 
+    elif client_flag == "verify_initial_codes":
         code_generator = CodeGenerationClient()
-        themes = load_themes_from_file("themes.json") 
-        initial_codes_json = load_codes_from_file_as_dictionary("codes.json")
+
+        # Get and validate themes file
+        while True:
+            themes_file_path = input("Enter the file path to the themes JSON file: ")
+            if not os.path.exists(themes_file_path):
+                print(f"Error: File '{themes_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                themes = load_themes_from_file(themes_file_path)
+                break
+            except Exception as e:
+                print(f"Error loading themes from '{themes_file_path}': {e}. Please check the file and try again.")
+                continue
+
+        # Get and validate codes file
+        while True:
+            codes_file_path = input("Enter the file path to the codes JSON file: ")
+            if not os.path.exists(codes_file_path):
+                print(f"Error: File '{codes_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                initial_codes_json = load_codes_from_file_as_dictionary(codes_file_path)
+                break
+            except Exception as e:
+                print(f"Error loading codes from '{codes_file_path}': {e}. Please check the file and try again.")
+                continue
+
         all_codes, all_files_excerpt_codings, new_codes_by_file = generate_codes(
-            directory, themes, code_generator, initial_codes=initial_codes_json, num_docs=NUM_DOCS_FOR_CODE_GENERATION) 
-    
+            directory, themes, code_generator, initial_codes=initial_codes_json, num_docs=NUM_DOCS_FOR_CODE_GENERATION
+        )
+
         output_file = os.path.join(
             OUTPUT_DIR,
             f"code_generation_verification_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
         )
-        write_coding_results_to_excel(all_files_excerpt_codings,
-                                     new_codes_by_file, output_file)
+        write_coding_results_to_excel(all_files_excerpt_codings, new_codes_by_file, output_file)
         print(f"\nGenerated Codes:\n{all_codes}")
 
     # Stage 3 - Part 1
-    elif client_flag == "generate_full_dataset_codes": 
+    elif client_flag == "generate_full_dataset_codes":
         code_generator = CodeGenerationClient()
-        themes = load_themes_from_file("themes.json") 
-        initial_codes_json = load_codes_from_file_as_dictionary("codes.json")
+
+        # Get and validate themes file
+        while True:
+            themes_file_path = input("Enter the file path to the themes JSON file: ")
+            if not os.path.exists(themes_file_path):
+                print(f"Error: File '{themes_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                themes = load_themes_from_file(themes_file_path)
+                break
+            except Exception as e:
+                print(f"Error loading themes from '{themes_file_path}': {e}. Please check the file and try again.")
+                continue
+
+        # Get and validate codes file
+        while True:
+            codes_file_path = input("Enter the file path to the codes JSON file: ")
+            if not os.path.exists(codes_file_path):
+                print(f"Error: File '{codes_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                initial_codes_json = load_codes_from_file_as_dictionary(codes_file_path)
+                break
+            except Exception as e:
+                print(f"Error loading codes from '{codes_file_path}': {e}. Please check the file and try again.")
+                continue
+
         all_codes, all_files_excerpt_codings, new_codes_by_file = generate_codes(
-            directory, themes, code_generator, initial_codes=initial_codes_json, num_docs=None) 
-    
+            directory, themes, code_generator, initial_codes=initial_codes_json, num_docs=None
+        )
+
         output_file = os.path.join(
             OUTPUT_DIR,
             f"full_dataset_code_generation_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
         )
-        write_coding_results_to_excel(all_files_excerpt_codings,
-                                     new_codes_by_file, output_file)
+        write_coding_results_to_excel(all_files_excerpt_codings, new_codes_by_file, output_file)
         print(f"\nGenerated Codes:\n{all_codes}")
 
     # Stage 3 - Part 2
-    elif client_flag == "generate_code_stats": 
-        
+    elif client_flag == "generate_code_stats":
+
         full_dataset_file_path = input("Enter the path to the full_dataset_code_generation xlsx file: ")
-        initial_codes_file_path = "codes.json"
-    
+
+        # Get and validate codes file
+        while True:
+            initial_codes_file_path = input("Enter the file path to the codes JSON file: ")
+            if not os.path.exists(initial_codes_file_path):
+                print(f"Error: File '{initial_codes_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                # You don't actually load the codes here, just verify it exists.
+                # If you were to load it, that logic would go here.
+                break #File exists, so break the loop
+            except Exception as e:
+                print(f"Error checking codes from '{initial_codes_file_path}': {e}. Please check the file and try again.")
+                continue
+
         output_file_path = os.path.join(
             OUTPUT_DIR,
             f"code_stats_generation_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
@@ -101,8 +178,8 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
         generate_code_stats(full_dataset_file_path, initial_codes_file_path, output_file_path)
 
     # Stage 3 - Part 3
-    elif client_flag == "merge_codes": 
-        
+    elif client_flag == "merge_codes":
+
         file_path = input("Enter the path to the full_dataset_code_generation xlsx file: ")
 
         # 1. Read the 'used_codes_with_def' sheet
@@ -114,10 +191,20 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
         full_dataset_codes = convert_df_to_codes_dict(used_codes_df)
 
         # 3. Load themes
-        themes = load_themes_from_file("themes.json") 
-        if not themes:
-            print("Error: No themes loaded. Exiting.")
-            return
+        while True:
+            themes_file_path = input("Enter the file path to the themes JSON file: ")
+            if not os.path.exists(themes_file_path):
+                print(f"Error: File '{themes_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                themes = load_themes_from_file(themes_file_path)
+                if not themes:
+                    print("Error: No themes loaded. Exiting.")
+                    return
+                break
+            except Exception as e:
+                print(f"Error loading themes from '{themes_file_path}': {e}. Please check the file and try again.")
+                continue
 
         # 4. Instantiate CodeMergerClient
         code_merger = CodeMergerClient()
@@ -199,15 +286,25 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
         theme_generator = ThemeGeneratorClient()
 
         codes_filepath = input("Enter the path to the codes JSON file: ")
-        themes_filepath = "themes.json"
 
-        themes = load_themes_from_file(themes_filepath)
+        # Get and validate themes file
+        while True:
+            themes_filepath = input("Enter the file path to the themes JSON file: ")
+            if not os.path.exists(themes_filepath):
+                print(f"Error: File '{themes_filepath}' does not exist. Please try again.")
+                continue
+            try:
+                themes = load_themes_from_file(themes_filepath)
+                break
+            except Exception as e:
+                print(f"Error loading themes from '{themes_filepath}': {e}. Please check the file and try again.")
+                continue
+
         all_code_data = load_codes_from_file(codes_filepath)
 
         if themes is None or all_code_data is None:
             return  # Exit if loading failed
 
-        theme_generator = ThemeGeneratorClient() #make sure this class is accessible.
         themes_hierarchy = theme_generator.generate_themes(all_code_data, themes)
 
         # Extract filename without extension
@@ -259,7 +356,7 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    # Stage 5
+    # Stage 5 - Part A
     elif client_flag == "visualize_individual_file":
         # 1. Prompt user for the themes_hierarchy JSON file
         full_dataset_file = input(
@@ -397,9 +494,74 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
                         filename_to_analyze,
                         output_dir=output_dir,
                     )
+    # Stage 5 - Part B
+    elif client_flag == "generate_intensity_codes":
+        intensity_generator = IntensityGenerationClient()
+
+        # Load Codes
+        codes_file_path = input("Enter the path to the codes JSON file: ")
+        try:
+            all_code_data = load_codes_from_file(codes_file_path)
+            code_definitions = {code_data['code']: code_data for code_data in all_code_data}
+        except Exception as e:
+            print(f"Error loading codes from '{codes_file_path}': {e}. Exiting.")
+            return
+
+        # Load Themes
+        themes_file_path = input("Enter the path to the themes JSON file: ")
+        try:
+            themes = load_themes_from_file(themes_file_path)
+        except Exception as e:
+            print(f"Error loading themes from '{themes_file_path}': {e}. Exiting.")
+            return
+
+        xlsx_file_path = input("Enter the path to the xlsx file for the desired class: ")
+        try:
+            df = pd.read_excel(xlsx_file_path, sheet_name="Merged Codings")
+        except Exception as e:
+            print(f"Error loading xlsx file '{xlsx_file_path}': {e}. Exiting.")
+            return
+
+        all_intensity_data = []
+
+        for index, row in df.iterrows():
+            filename = row['filename']
+            excerpt = row['excerpt']
+            codings_str = row['codings']
+            class_value = row['class']
+
+            if pd.isna(codings_str):
+                codes_applied = []
+            else:
+                codes_applied = [code.strip() for code in codings_str.split(',')]
+
+            # Call generate_intensity *once* per excerpt
+            intensity_ratings = intensity_generator.generate_intensity(excerpt, codes_applied, code_definitions, themes)
+
+            if intensity_ratings:
+                # Iterate through the *returned* ratings (important!)
+                for code, data in intensity_ratings.items():
+                    magnitude = data.get('magnitude')
+                    justification = data.get('justification')
+
+                    all_intensity_data.append({
+                        'filename': filename,
+                        'excerpt': excerpt,
+                        'code': code,
+                        'intensity': magnitude,
+                        'justification': justification,
+                        'class': class_value
+                    })
+
+        intensity_df = pd.DataFrame(all_intensity_data)
+        intensity_df = intensity_df[['filename', 'excerpt', 'code', 'intensity', 'justification', 'class']]
+        output_filename = f"intensity_codes_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+        output_filepath = os.path.join(OUTPUT_DIR, output_filename)
+        intensity_df.to_excel(output_filepath, index=False)
+        print(f"Intensity coding results saved to: {output_filepath}")
 
     elif client_flag == "intra_text_analyzer":
-        # intra_text_analyzer = IntraTextAnalyzerClient()
+        intra_text_analyzer = IntraTextAnalyzerClient()
         # analysis_results = load_analysis_results_from_file("analysis_results.json") 
         # perform_intra_text_analysis(analysis_results, intra_text_analyzer)
       
@@ -431,6 +593,7 @@ def main():
         "visualize_themes", 
         "visualize_codes",
         "visualize_individual_file", 
+        "generate_intensity_codes",
         "intra_text_analyzer", 
         "cross_document_analyzer"
     ], help="Specify the client to run.")

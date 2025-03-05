@@ -4,7 +4,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 
 from config import PROJECT_ID, LOCATION, GEMINI_MODEL, LARGE_GENERATION_CONFIG, SAFETY_SETTINGS
-from utils import remove_json_markdown
+from src.utils import remove_json_markdown
 
 
 class CodeCompressorClient:
@@ -36,7 +36,7 @@ class CodeCompressorClient:
                 "- If an 'examples' value is long, summarize it concisely, preserving the core meaning.\n"
                 "- Ensure that the summarized examples still clearly relate to the corresponding 'code' and 'construct'.\n"
                 "- Maintain the original JSON structure (a LIST of dictionaries).  Do NOT add or remove any keys.\n"
-                "- Return an empty LIST if there are any issues\n"
+                "- Return an empty LIST if there are any issues\n\n"
                 "Example Input:\n"
                 "```json\n"
                 "[\n"

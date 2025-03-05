@@ -6,7 +6,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Part, SafetySetting, FinishReason
 
 from config import PROJECT_ID, LOCATION, GEMINI_MODEL, LARGE_GENERATION_CONFIG, SAFETY_SETTINGS, RESEARCH_QUESTION_FILE
-from utils import remove_json_markdown
+from src.utils import remove_json_markdown
 
 
 # Configure logging
@@ -74,11 +74,12 @@ class CodeGenerationClient:
             f"{text_chunk}"
             "Task:\n\n"
             "1. Analyze the provided text to find extracts related to both the specified theme and pre-university (and pre-Praxis project) experiences. You may break down paragraphs into smaller extracts as needed to ensure accurate and granular coding.\n"
-            "2. If extracts in the provided text that include direct, compelling, and explicit reference to the specified theme and relate to pre-university experiences are found, then assign appropriate codes to the sentences or multi-sentence excerpts.\n"
-            "    - If a relevant code already exists in the JSON object above, then use it.\n"
-            "    - If an excerpt includes direct, compelling, and explicit relevance to the theme but does not have an existing relevant code, then add a new code.\n"
-            "3. If you are adding a new code:\n" 
-            "    - New codes are added as short labels to the new_codes in a JSON response. Provide the proposed name, excerpt, construct it belongs to, definition, as well as justification and confidence for adding the new code.\n"
+            "2. If extracts in the provided text are found that include direct, compelling, and explicit reference to the specified theme and relate to pre-university experiences, then assign appropriate codes to the sentences or multi-sentence excerpts.\n"
+            "    - If a relevant code already exists in the JSON object above, then use it by adding a coded_excerpts item.\n"
+            "    - If an excerpt includes direct, compelling, and explicit relevance to the theme but does not have an existing relevant code, then you MUST also add and define the new code.\n"
+            "3. If you are adding and defining a new code:\n" 
+            "    - New codes are added as short labels to the new_codes key in the JSON response. Provide the proposed name, excerpt, construct it belongs to, definition, as well as justification and confidence for adding the new code.\n"
+            "    - Note: new code names should not include any commas within its name"
             "4. If some or all excerpts are not directly relevant to the parent theme, exclude them from your response entirely, and do not feel obligated to create new codes.\n\n"
             "Provide the response in a JSON object in the following format:\n\n"
             """

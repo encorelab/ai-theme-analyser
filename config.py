@@ -14,14 +14,14 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL")
 BATCH_SIZE = 1
 
 # Directory Setup
-INPUT_DIR = "input_files/2025 EngSci - Top 90 Percent"
-OUTPUT_DIR = "output_files"
-SPREADSHEET_FILENAME = "ParentSatisfaction_24Jun24.xlsx" #Modify as needed
+#INPUT_DIR = "input_files/Ref1_Mot"
+#OUTPUT_DIR = "output_files/Ref1_Mot"
+INPUT_DIR = "input_files/Ref1_Mot"
+OUTPUT_DIR = "output_files/Ref1_Mot"
 RESEARCH_QUESTION_FILE = "research_question.txt"
-CONSTRUCT_FILE = "construct.txt"
 
 # Stage 2: Initial Code Generation
-NUM_DOCS_FOR_CODE_GENERATION = 23
+NUM_DOCS_FOR_CODE_GENERATION = 50
 
 # Stage 3: 
 MERGE_CODES_GREATER_THAN = 30
