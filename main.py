@@ -13,14 +13,15 @@ from code_application import ThematicCodingClient
 from src.within_case_analysis import IntraTextAnalyzerClient
 from src.report_generation import CrossDocumentAnalyzerClient
 from src.code_compressor_client import CodeCompressorClient
-from src.utils import (extract_paragraphs_from_docx, 
-                   write_coding_results_to_excel, 
+from src.theme_summary_client import ThemeSummaryClient
+from src.utils import (extract_paragraphs_from_docx,
+                   write_coding_results_to_excel,
                    generate_codes,
-                   perform_analysis_and_reporting, 
-                   perform_intra_text_analysis, 
-                   perform_cross_document_analysis, 
-                   load_analysis_results_from_file, 
-                   load_themes_from_file, 
+                   perform_analysis_and_reporting,
+                   perform_intra_text_analysis,
+                   perform_cross_document_analysis,
+                   load_analysis_results_from_file,
+                   load_themes_from_file,
                    load_codes_from_file,
                    load_codes_from_file_as_dictionary,
                    visualize_individual_theme_subgraphs,
@@ -34,13 +35,13 @@ from src.utils import (extract_paragraphs_from_docx,
                    read_used_codes_with_def,
                    replace_and_update_codes,
                    split_data_by_class,
-                   compress_code_examples) 
+                   compress_code_examples)
 
 
 def perform_thematic_analysis(directory, batch_size, client_flag):
 
     output_file = os.path.join(OUTPUT_DIR, f"analyzed_results_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx")
-    
+
     # Stage 2 - Part 1
     if client_flag == "generate_initial_codes":
         code_generator = CodeGenerationClient()
@@ -224,7 +225,7 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
 
         # 6. Prepare data for Excel output
         merged_codes_data = []
-        
+
         for merged_code, details in merged_codes_result.items():
             merged_codes_data.append({
                 "code": merged_code,
@@ -560,18 +561,183 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
         intensity_df.to_excel(output_filepath, index=False)
         print(f"Intensity coding results saved to: {output_filepath}")
 
+    # Stage 6 - Part A
+    elif client_flag == "generate_theme_summaries":
+        theme_summary_client = ThemeSummaryClient()
+
+        # Load themes hierarchy
+        themes_hierarchy_file_path = input("Enter the path to the themes hierarchy JSON file: ")
+        try:
+            themes_hierarchy = load_themes_from_file(themes_hierarchy_file_path)
+        except Exception as e:
+            print(f"Error loading themes hierarchy from '{themes_hierarchy_file_path}': {e}. Exiting.")
+            return
+
+        # Load Codes
+        codes_file_path = input("Enter the path to the codes JSON file: ")
+        try:
+            all_code_data = load_codes_from_file(codes_file_path)
+            #Create code_definitions
+            code_definitions = {code_data['code']: code_data for code_data in all_code_data}
+        except Exception as e:
+            print(f"Error loading codes from '{codes_file_path}': {e}. Exiting.")
+            return
+
+        # Load Themes
+        themes_file_path = input("Enter the path to the themes JSON file: ")
+        try:
+            themes = load_themes_from_file(themes_file_path)
+            #Create theme_definitions
+            theme_definitions = {theme_data['theme']: theme_data for theme_data in themes}
+        except Exception as e:
+            print(f"Error loading themes from '{themes_file_path}': {e}. Exiting.")
+            return
+
+        xlsx_file_path = input("Enter the path to the xlsx file for the desired class: ")
+        try:
+            df = pd.read_excel(xlsx_file_path, sheet_name="Merged Codings")  # Corrected sheet name
+        except Exception as e:
+            print(f"Error loading xlsx file '{xlsx_file_path}': {e}. Exiting.")
+            return
+
+        #Get class number
+        class_number = input("Enter the class number (e.g., 1, 2, 3, 4, or 5): ")
+        # Validate class number input
+        if class_number not in ['1', '2', '3', '4', '5']:
+            print("Invalid class number. Exiting.")
+            return
+
+        all_summaries_data = []
+
+        #Iterate through the themes_hierarchy, one construct (theme) at a time.
+        for meta_theme, meta_theme_data in themes_hierarchy.items():
+            for theme, theme_data in meta_theme_data.get("themes", {}).items():
+
+                # --- Filter data for the current theme (construct) ---
+
+                # 1. Filter themes list to keep only the current theme
+                current_theme_data = [t for t in themes if t['theme'] == theme]
+                if not current_theme_data:  # Check if the list is empty
+                    print(f"Warning: Theme '{theme}' not found in themes data. Skipping.")
+                    continue  # Skip to the next theme
+                current_theme_definition = {theme_data['theme']: theme_data for theme_data in current_theme_data}
+
+
+                # 2. Filter all_code_data to include only codes for the current theme
+                current_theme_codes = [
+                    code_data for code_data in all_code_data
+                    if code_data['construct'] == theme
+                ]
+                current_code_definitions = {code_data['code']: code_data for code_data in current_theme_codes}
+
+
+                # 3. Filter the DataFrame for relevant codings
+                relevant_rows = df[df['codings'].apply(lambda x: any(code.startswith(f"{theme}-") for code in (str(x).split(',') if pd.notna(x) else [])))]
+
+                # 4.  Filter theme_hierarchy to only include the current theme.
+                current_theme_hierarchy = {
+                    meta_theme: {
+                        "description": meta_theme_data["description"],
+                        "themes": {
+                            theme: theme_data
+                        },
+                        "frequency": theme_data["frequency"] #Keep original meta-theme frequency.
+                    }
+                }
+
+                # --- Iterate through sub-themes within the current theme ---
+                for sub_theme, sub_theme_data in theme_data.get("sub-themes", {}).items():
+
+                    # --- Filter data further for the current sub-theme ---
+
+                    # 1. Filter sub-theme codes
+                    sub_theme_codes = sub_theme_data.get("codes", [])
+                    if not sub_theme_codes:
+                        print(f"Warning: No codes found for sub-theme '{sub_theme}'. Skipping.")
+                        continue #Skip this sub-theme
+
+                    # 2.  Filter all_code_data for the sub-theme codes
+                    current_sub_theme_codes = [
+                        code for code in current_theme_codes
+                        if code['code'] in sub_theme_codes
+                    ]
+                    current_sub_theme_code_definitions = {code_data['code']: code_data for code_data in current_sub_theme_codes}
+                    # 3. Filter the DataFrame for rows containing *only* the current sub-theme codes
+                    sub_theme_relevant_rows = relevant_rows[relevant_rows['codings'].apply(
+                        lambda x: any(code.strip() in sub_theme_codes for code in (str(x).split(',') if pd.notna(x) else []))
+                    )]
+
+                    # 4. Filter theme hierarchy for the current sub_theme
+                    current_sub_theme_hierarchy = {
+                        meta_theme: {
+                            "description": meta_theme_data["description"],
+                            "themes": {
+                                theme: {
+                                    "description": theme_data["description"],
+                                    "sub-themes": {
+                                        sub_theme: sub_theme_data
+                                    },
+                                    "frequency": theme_data["frequency"] #Keep the original theme frequency
+                                }
+                            },
+                            "frequency": meta_theme_data["frequency"] #Keep original meta-theme frequency.
+                        }
+                    }
+
+                    # --- Prepare data and call the LLM ---
+                    # Instead of combining excerpts, create a list of dictionaries
+                    sub_theme_excerpts_data = []
+                    for _, row in sub_theme_relevant_rows.iterrows():
+                        # Get the relevant codes for this specific excerpt
+                        relevant_codes_for_excerpt = [
+                            code.strip() for code in row['codings'].split(',')
+                            if code.strip() in sub_theme_codes or (code.strip().split('-', 1)[1] if '-' in code.strip() else code.strip()) in sub_theme_codes
+                        ]
+                        sub_theme_excerpts_data.append({
+                            'filename': row['filename'],
+                            'excerpt': row['excerpt'],
+                            'codings': relevant_codes_for_excerpt  # Use the filtered list
+                        })
+
+                    if sub_theme_excerpts_data: # Check if the list is not empty
+                        if (theme == 'Help society'):
+                            pass
+
+                        summary = theme_summary_client.generate_theme_summary(
+                            theme,
+                            sub_theme,
+                            sub_theme_excerpts_data,  # Pass the list of dictionaries
+                            current_sub_theme_code_definitions, #Pass sub-theme relevant codes
+                            current_theme_definition #Pass the current theme definition
+                        )
+                        if summary:
+                            all_summaries_data.append({
+                                'class': class_number,  # Use the provided class number
+                                'construct': theme,
+                                'sub-theme': sub_theme,
+                                'summary': summary,
+                            })
+
+        #Create the dataframe
+        summaries_df = pd.DataFrame(all_summaries_data)
+        summaries_df = summaries_df[['class', 'construct', 'sub-theme', 'summary']]
+        output_filename = f"generate_theme_summaries_class_{class_number}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+        output_filepath = os.path.join(OUTPUT_DIR, output_filename)
+        summaries_df.to_excel(output_filepath, index=False)
+        print(f"Theme summary results saved to: {output_filepath}")
+
     elif client_flag == "intra_text_analyzer":
         intra_text_analyzer = IntraTextAnalyzerClient()
-        # analysis_results = load_analysis_results_from_file("analysis_results.json") 
+        # analysis_results = load_analysis_results_from_file("analysis_results.json")
         # perform_intra_text_analysis(analysis_results, intra_text_analyzer)
-      
+
         # data = json.loads(data122)
         # visualize_network(data)
         pass
 
     elif client_flag == "cross_document_analyzer":
         cross_document_analyzer = CrossDocumentAnalyzerClient()
-        intra_text_output_file = os.path.join(OUTPUT_DIR, "intra_text_analysis.xlsx")  
+        intra_text_output_file = os.path.join(OUTPUT_DIR, "intra_text_analysis.xlsx")
         perform_cross_document_analysis(intra_text_output_file, cross_document_analyzer)
 
     else:
@@ -594,6 +760,7 @@ def main():
         "visualize_codes",
         "visualize_individual_file", 
         "generate_intensity_codes",
+        "generate_theme_summaries",
         "intra_text_analyzer", 
         "cross_document_analyzer"
     ], help="Specify the client to run.")
