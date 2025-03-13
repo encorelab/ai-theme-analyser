@@ -3,7 +3,7 @@ import pandas as pd
 import argparse
 import os
 
-def convert_excel_to_json_no_frequency(excel_filepath, json_filepath):
+def convert_excel_to_json_no_frequency(excel_filepath, json_filepath, sheet_name=0):
     """
     Converts an Excel spreadsheet (in the specific format) to a JSON file.
     This version *excludes* the 'frequency' column entirely from the output JSON.
@@ -11,10 +11,11 @@ def convert_excel_to_json_no_frequency(excel_filepath, json_filepath):
     Args:
         excel_filepath: The path to the input Excel file.
         json_filepath: The path to the output JSON file.
+        sheet_name: The name or index of the sheet to convert (default is 0, the first sheet).
     """
     try:
         # Read the Excel file into a Pandas DataFrame
-        df = pd.read_excel(excel_filepath)
+        df = pd.read_excel(excel_filepath, sheet_name=sheet_name)
 
         # Validate the column names (frequency can be present, but will be ignored)
         expected_columns = ["code", "description", "examples", "construct"]  # No 'frequency'
@@ -37,7 +38,7 @@ def convert_excel_to_json_no_frequency(excel_filepath, json_filepath):
         with open(json_filepath, 'w') as f:
             json.dump(data, f, indent=4)
 
-        print(f"Successfully converted '{excel_filepath}' to '{json_filepath}' (frequency column excluded)")
+        print(f"Successfully converted sheet '{sheet_name}' from '{excel_filepath}' to '{json_filepath}' (frequency column excluded)")
 
     except FileNotFoundError:
         print(f"Error: File not found - {excel_filepath}")
@@ -51,6 +52,7 @@ def main():
     parser = argparse.ArgumentParser(description="Convert an Excel codebook to a JSON file.")
     parser.add_argument("excel_file", help="Path to the input Excel file.")
     parser.add_argument("json_file", help="Path to the output JSON file (e.g., output.json).")
+    parser.add_argument("-s", "--sheet_name", help="Name or index of the sheet to convert (default is 0, the first sheet).", default=0) # Added sheet_name argument
 
     args = parser.parse_args()
 
@@ -59,7 +61,13 @@ def main():
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    convert_excel_to_json_no_frequency(args.excel_file, args.json_file)
+    # Convert sheet_name to int if it's a number
+    try:
+        sheet_name = int(args.sheet_name)
+    except ValueError:
+        sheet_name = args.sheet_name
+    
+    convert_excel_to_json_no_frequency(args.excel_file, args.json_file, sheet_name)
 
 if __name__ == "__main__":
     main()
