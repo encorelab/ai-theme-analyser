@@ -82,8 +82,8 @@ def write_coding_results_to_excel(all_files_excerpt_codings: dict[str, dict[str,
                     all_justifications_data.append({
                         'code': code,
                         'filename': filename,
-                        'excerpt': data['excerpt'],
-                        'theme': data.get('theme', ''),
+                        'examples': data['excerpt'],
+                        'construct': data.get('theme', ''),
                         'description': data.get('description', ''),
                         'justification': data['justification'],
                         'probability': data['probability']

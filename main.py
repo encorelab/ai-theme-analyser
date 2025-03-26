@@ -181,7 +181,7 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
     # Stage 3 - Part 3
     elif client_flag == "merge_codes":
 
-        file_path = input("Enter the path to the full_dataset_code_generation xlsx file: ")
+        file_path = input("Enter the path to the code_stats_generation xlsx file: ")
 
         # 1. Read the 'used_codes_with_def' sheet
         used_codes_df = read_used_codes_with_def(file_path)
@@ -613,114 +613,88 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
         for meta_theme, meta_theme_data in themes_hierarchy.items():
             for theme, theme_data in meta_theme_data.get("themes", {}).items():
 
-                # --- Filter data for the current theme (construct) ---
-
-                # 1. Filter themes list to keep only the current theme
+                # --- Prepare data for the current theme (construct) ---
+                if theme=='Career Outlook':
+                    pass
+                if theme=='Help society':
+                    pass
+                # 1. Get current theme data and sub-theme information.
                 current_theme_data = [t for t in themes if t['theme'] == theme]
                 if not current_theme_data:  # Check if the list is empty
                     print(f"Warning: Theme '{theme}' not found in themes data. Skipping.")
                     continue  # Skip to the next theme
                 current_theme_definition = {theme_data['theme']: theme_data for theme_data in current_theme_data}
 
-
-                # 2. Filter all_code_data to include only codes for the current theme
-                current_theme_codes = [
-                    code_data for code_data in all_code_data
-                    if code_data['construct'] == theme
-                ]
-                current_code_definitions = {code_data['code']: code_data for code_data in current_theme_codes}
-
-
-                # 3. Filter the DataFrame for relevant codings
-                relevant_rows = df[df['codings'].apply(lambda x: any(code.startswith(f"{theme}-") for code in (str(x).split(',') if pd.notna(x) else [])))]
-
-                # 4.  Filter theme_hierarchy to only include the current theme.
-                current_theme_hierarchy = {
-                    meta_theme: {
-                        "description": meta_theme_data["description"],
-                        "themes": {
-                            theme: theme_data
-                        },
-                        "frequency": theme_data["frequency"] #Keep original meta-theme frequency.
-                    }
-                }
-
                 # --- Iterate through sub-themes within the current theme ---
                 for sub_theme, sub_theme_data in theme_data.get("sub-themes", {}).items():
 
-                    # --- Filter data further for the current sub-theme ---
-
-                    # 1. Filter sub-theme codes
-                    sub_theme_codes = sub_theme_data.get("codes", [])
+                    # 1.  Get sub-theme codes, checking if the key exists.
+                    sub_theme_codes = sub_theme_data.get("codes", [])  # Default to empty list
                     if not sub_theme_codes:
-                        print(f"Warning: No codes found for sub-theme '{sub_theme}'. Skipping.")
-                        continue #Skip this sub-theme
+                        print(f"Warning: No codes found for sub-theme '{sub_theme}' in theme '{theme}'. Skipping.")
+                        continue # Skip to the next sub-theme
 
-                    # 2.  Filter all_code_data for the sub-theme codes
+                    # 2. Filter code definitions for current sub-theme.
                     current_sub_theme_codes = [
-                        code for code in current_theme_codes
-                        if code['code'] in sub_theme_codes
+                        code_data for code_data in all_code_data
+                        if code_data['code'] in sub_theme_codes
                     ]
-                    current_sub_theme_code_definitions = {code_data['code']: code_data for code_data in current_sub_theme_codes}
-                    # 3. Filter the DataFrame for rows containing *only* the current sub-theme codes
-                    sub_theme_relevant_rows = relevant_rows[relevant_rows['codings'].apply(
+                    current_sub_theme_code_definitions = {}
+                    for code_data in current_sub_theme_codes:
+                        if code_data['code'] in sub_theme_codes:
+                            current_sub_theme_code_definitions[code_data['code']] = code_data
+                        else:
+                            print(f"Error: Definition for code '{code_data['code']}' not found, but the code appears in sub-theme '{sub_theme}'.")
+
+                    # Check for missing definitions
+                    for code in sub_theme_codes:
+                        if code not in current_sub_theme_code_definitions:
+                            print(f"Error: Definition for code '{code}' (in sub-theme '{sub_theme}') not found.")
+
+                    if not current_sub_theme_code_definitions: #Check if there are any code defintions, skip if none
+                        print(f"Warning: No valid code definitions for sub-theme {sub_theme}. Skipping.")
+                        continue
+
+                    # 3. Filter the DataFrame for relevant codings (sub-theme specific)
+                    sub_theme_relevant_rows = df[df['codings'].apply(
                         lambda x: any(code.strip() in sub_theme_codes for code in (str(x).split(',') if pd.notna(x) else []))
                     )]
 
-                    # 4. Filter theme hierarchy for the current sub_theme
-                    current_sub_theme_hierarchy = {
-                        meta_theme: {
-                            "description": meta_theme_data["description"],
-                            "themes": {
-                                theme: {
-                                    "description": theme_data["description"],
-                                    "sub-themes": {
-                                        sub_theme: sub_theme_data
-                                    },
-                                    "frequency": theme_data["frequency"] #Keep the original theme frequency
-                                }
-                            },
-                            "frequency": meta_theme_data["frequency"] #Keep original meta-theme frequency.
-                        }
-                    }
-
-                    # --- Prepare data and call the LLM ---
-                    # Instead of combining excerpts, create a list of dictionaries
+                    # Create excerpt data object
                     sub_theme_excerpts_data = []
                     for _, row in sub_theme_relevant_rows.iterrows():
-                        # Get the relevant codes for this specific excerpt
+                        # Get codes from this row that are included in the sub-theme codes
                         relevant_codes_for_excerpt = [
                             code.strip() for code in row['codings'].split(',')
-                            if code.strip() in sub_theme_codes or (code.strip().split('-', 1)[1] if '-' in code.strip() else code.strip()) in sub_theme_codes
+                            if code.strip() in sub_theme_codes
                         ]
                         sub_theme_excerpts_data.append({
                             'filename': row['filename'],
                             'excerpt': row['excerpt'],
-                            'codings': relevant_codes_for_excerpt  # Use the filtered list
+                            'codings': relevant_codes_for_excerpt
                         })
 
-                    if sub_theme_excerpts_data: # Check if the list is not empty
-                        if (theme == 'Help society'):
-                            pass
-
+                    if sub_theme_excerpts_data:  # Check if the list is not empty
                         summary = theme_summary_client.generate_theme_summary(
                             theme,
-                            sub_theme,
-                            sub_theme_excerpts_data,  # Pass the list of dictionaries
-                            current_sub_theme_code_definitions, #Pass sub-theme relevant codes
-                            current_theme_definition #Pass the current theme definition
+                            sub_theme,  #Pass the sub-theme
+                            sub_theme_excerpts_data,
+                            current_sub_theme_code_definitions,
+                            current_theme_definition
                         )
                         if summary:
                             all_summaries_data.append({
                                 'class': class_number,  # Use the provided class number
                                 'construct': theme,
-                                'sub-theme': sub_theme,
-                                'summary': summary,
+                                'sub-theme': sub_theme, #Include sub-theme
+                                'excerpts': sub_theme_excerpts_data,  # Add excerpts data
+                                'codes': sub_theme_codes,  # Add the list of codes
+                                'summary': summary,  # Store the returned summary
                             })
 
         #Create the dataframe
         summaries_df = pd.DataFrame(all_summaries_data)
-        summaries_df = summaries_df[['class', 'construct', 'sub-theme', 'summary']]
+        summaries_df = summaries_df[['class', 'construct', 'sub-theme', 'excerpts', 'codes', 'summary']] 
         output_filename = f"generate_theme_summaries_class_{class_number}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
         output_filepath = os.path.join(OUTPUT_DIR, output_filename)
         summaries_df.to_excel(output_filepath, index=False)
