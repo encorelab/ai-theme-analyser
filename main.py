@@ -5,7 +5,9 @@ import json
 import pandas as pd
 
 from config import *
+import logging
 from src.code_generation import CodeGenerationClient
+from src.fix_code_generation import FixCodeGeneratorClient
 from src.code_merger_client import CodeMergerClient
 from src.theme_generator import ThemeGeneratorClient
 from src.intensity_generation import IntensityGenerationClient
@@ -36,6 +38,9 @@ from src.utils import (extract_paragraphs_from_docx,
                    replace_and_update_codes,
                    split_data_by_class,
                    compress_code_examples)
+
+# Configure logging for main script actions if desired
+logging.basicConfig(filename="main_log.txt", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def perform_thematic_analysis(directory, batch_size, client_flag):
@@ -152,6 +157,220 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
         )
         write_coding_results_to_excel(all_files_excerpt_codings, new_codes_by_file, output_file)
         print(f"\nGenerated Codes:\n{all_codes}")
+
+    # Stage 3 - Part 1.1
+    elif client_flag == "fix_dataset_codes":
+        fix_code_generator = FixCodeGeneratorClient()
+
+        # --- Get Input Files ---
+        # 1. Get and validate themes file
+        while True:
+            themes_file_path = input("Enter the file path to the themes JSON file: ")
+            if not os.path.exists(themes_file_path):
+                print(f"Error: File '{themes_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                themes = load_themes_from_file(themes_file_path)
+                if not themes:
+                    print("Error: No themes loaded from file. Please check the file content.")
+                    continue # Ask again if themes list is empty
+                # Create a set of valid theme names
+                valid_theme_names = {theme.get('theme') for theme in themes if theme.get('theme')}
+                if not valid_theme_names:
+                    print("Error: No valid 'theme' keys found in the loaded themes data. Cannot proceed.")
+                    return # Exit if no themes are usable
+                print(f"Loaded {len(valid_theme_names)} valid constructs from themes file.")
+                break
+            except Exception as e:
+                print(f"Error loading themes from '{themes_file_path}': {e}. Please check the file and try again.")
+                continue
+
+        # 2. Get and validate full dataset Excel file (same as before)
+        while True:
+            full_dataset_file_path = input("Enter the path to the full_dataset xlsx file (containing 'codings' and 'code_justifications' sheets): ")
+            if not os.path.exists(full_dataset_file_path):
+                print(f"Error: File '{full_dataset_file_path}' does not exist. Please try again.")
+                continue
+            try:
+                codings_df = pd.read_excel(full_dataset_file_path, sheet_name="codings")
+                definitions_df = pd.read_excel(full_dataset_file_path, sheet_name="code_justifications")
+                print("Successfully loaded 'codings' and 'code_justifications' sheets.")
+                break
+            except FileNotFoundError:
+                print(f"Error: File '{full_dataset_file_path}' not found during read attempt.")
+                continue
+            except ValueError as e:
+                if "Worksheet named" in str(e) and "not found" in str(e):
+                    print(f"Error: Required sheet ('codings' or 'code_justifications') not found in '{full_dataset_file_path}'. Please ensure both sheets exist.")
+                else:
+                    print(f"Error reading Excel file '{full_dataset_file_path}': {e}. Check file integrity.")
+                continue
+            except Exception as e:
+                print(f"An unexpected error occurred while reading '{full_dataset_file_path}': {e}. Please check the file and try again.")
+                continue
+
+        # --- *** Pre-Check Validation *** ---
+        print("\nPerforming pre-check validation on codes...")
+        malformed_codes_found = [] # Store tuples (code, filename, excerpt_preview)
+        unknown_constructs_found = set() # Store unique unknown construct names
+        codes_with_unknown_constructs = {} # Store {unknown_construct: [example_code1, ...]}
+        found_errors = False
+
+        # Iterate through the entire codings dataframe once for validation
+        for index, row in codings_df.iterrows():
+            filename = row['filename']
+            excerpt = str(row['excerpt']) # Ensure excerpt is string
+            excerpt_preview = excerpt[:80] + '...' if len(excerpt) > 80 else excerpt
+            # --- Corrected line below ---
+            coding_str = '' if pd.isna(row['codings']) else str(row['codings'])
+            applied_codes = [code.strip() for code in coding_str.split(',') if code.strip()]
+
+            for applied_code in applied_codes:
+                # 1. Check for missing hyphen '-'
+                if '-' not in applied_code:
+                    malformed_codes_found.append((applied_code, filename, excerpt_preview))
+                    found_errors = True
+                    continue # Move to next code
+
+                # 2. Check if construct exists in themes.json
+                try:
+                    applied_construct = applied_code.split('-', 1)[0]
+                    if applied_construct not in valid_theme_names:
+                        # Add to set of unknown constructs
+                        unknown_constructs_found.add(applied_construct)
+                        # Keep track of example codes for this unknown construct
+                        if applied_construct not in codes_with_unknown_constructs:
+                            codes_with_unknown_constructs[applied_construct] = set()
+                        codes_with_unknown_constructs[applied_construct].add(applied_code)
+                        found_errors = True
+                except Exception as e:
+                    # Log unexpected error during split, though unlikely if '-' check passed
+                    logging.error(f"Unexpected error processing code '{applied_code}' during pre-check: {e}")
+                    malformed_codes_found.append((applied_code + " (Error during processing)", filename, excerpt_preview))
+                    found_errors = True
+
+
+        # --- Report Errors and Exit if Found ---
+        if found_errors:
+            print("\n--- Validation Errors Found ---")
+            if malformed_codes_found:
+                print("\nError: The following codes are missing the construct prefix (no '-'):")
+                # Print unique codes first for brevity
+                unique_malformed = sorted(list(set([code for code, _, _ in malformed_codes_found])))
+                print(f"  Unique malformed codes: {', '.join(unique_malformed)}")
+
+            if unknown_constructs_found:
+                print("\nError: The following constructs found in code names are not defined in the themes file:")
+                sorted_unknown = sorted(list(unknown_constructs_found))
+                for construct in sorted_unknown:
+                    example_codes = sorted(list(codes_with_unknown_constructs.get(construct, set())))
+                    print(f"  - Construct: '{construct}' (Examples: {', '.join(example_codes[:3])}{'...' if len(example_codes) > 3 else ''})")
+
+            print("\nPlease fix the themes file or the applied codes in the 'codings' sheet and rerun.")
+            logging.error("Validation errors found in codes (malformed or unknown constructs). Exiting fix_dataset_codes.")
+            return # Exit the function
+
+        else:
+            print("Validation successful. No malformed codes or unknown constructs found.")
+            logging.info("Code validation passed.")
+
+        # --- If Validation Passed, Proceed with Main Logic ---
+
+        print("\nProceeding to find and generate missing definitions...")
+        logging.info("Starting main loop for fix_dataset_codes process.")
+
+        # Ensure definition columns are correct type after successful validation
+        definitions_df['code'] = definitions_df['code'].astype(str)
+        existing_codes_set = set(definitions_df['code'].unique())
+        print(f"Found {len(existing_codes_set)} existing code definitions.")
+
+        newly_generated_definitions = []
+        processed_missing_codes = set() # Track codes sent to LLM
+
+        # Iterate through each CONSTRUCT (Theme) from the themes file
+        for construct_info in themes:
+            current_construct_name = construct_info.get('theme')
+            if not current_construct_name: # Should have been caught by earlier check, but safe
+                continue
+
+            print(f"\nProcessing construct: {current_construct_name}")
+            logging.info(f"Processing construct: {current_construct_name}")
+
+            # Iterate through each unique FILENAME in the codings data
+            unique_filenames = codings_df['filename'].unique()
+            for filename in unique_filenames:
+                file_codings_df = codings_df[codings_df['filename'] == filename]
+                missing_codes_in_file_for_construct = {}
+
+                # Iterate through each EXCERPT in the current file
+                for _, row in file_codings_df.iterrows():
+                    excerpt = str(row['excerpt']) # Ensure string
+                    coding_str = '' if pd.isna(row['codings']) else str(row['codings'])
+                    applied_codes = [code.strip() for code in coding_str.split(',') if code.strip()]
+
+                    for applied_code in applied_codes:
+
+                        # Extract construct (already validated to exist and have '-')
+                        applied_construct = applied_code.split('-', 1)[0]
+
+                        # Check if code belongs to current construct and needs definition
+                        if applied_construct == current_construct_name and \
+                        applied_code not in existing_codes_set and \
+                        applied_code not in processed_missing_codes:
+
+                            if applied_code not in missing_codes_in_file_for_construct:
+                                missing_codes_in_file_for_construct[applied_code] = {
+                                    'excerpt': excerpt,
+                                    'filename': filename
+                                }
+                                # Mark as queued for LLM call within this file/construct batch
+                                processed_missing_codes.add(applied_code)
+
+
+                # If missing codes were found for this construct in this file, call LLM (same as before)
+                if missing_codes_in_file_for_construct:
+                    print(f"  Found {len(missing_codes_in_file_for_construct)} missing codes for construct '{current_construct_name}' in file '{filename}'. Requesting definitions...")
+                    logging.info(f"Requesting definitions for {len(missing_codes_in_file_for_construct)} codes in construct '{current_construct_name}', file '{filename}'. Codes: {list(missing_codes_in_file_for_construct.keys())}")
+
+                    generated_defs = fix_code_generator.generate_missing_definitions(
+                        construct_info,
+                        missing_codes_in_file_for_construct
+                    )
+
+                    if generated_defs:
+                        print(f"  Received {len(generated_defs)} new definitions from LLM.")
+                        newly_generated_definitions.extend(generated_defs)
+                        for new_def in generated_defs:
+                            existing_codes_set.add(new_def['code'])
+                            processed_missing_codes.discard(new_def['code'])
+                        logging.info(f"Added {len(generated_defs)} new definitions. Updated existing_codes_set size: {len(existing_codes_set)}")
+                    else:
+                        print(f"  LLM did not return definitions for this batch.")
+                        logging.warning(f"LLM call for construct '{current_construct_name}', file '{filename}' returned no definitions.")
+
+        # --- Combine and Save ---
+        if newly_generated_definitions:
+            print(f"\nGenerated a total of {len(newly_generated_definitions)} new code definitions.")
+            new_definitions_df = pd.DataFrame(newly_generated_definitions)
+            updated_definitions_df = pd.concat([definitions_df, new_definitions_df], ignore_index=True)
+            updated_definitions_df = updated_definitions_df.drop_duplicates(subset=['code'], keep='first')
+            print(f"Total definitions after merging and deduplication: {len(updated_definitions_df)}")
+        else:
+            print("\nNo new code definitions were generated.")
+            updated_definitions_df = definitions_df
+
+        output_filename = f"fixed_full_dataset_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+        output_filepath = os.path.join(OUTPUT_DIR, output_filename)
+
+        try:
+            with pd.ExcelWriter(output_filepath, engine='openpyxl') as writer:
+                codings_df.to_excel(writer, sheet_name='codings', index=False)
+                updated_definitions_df.to_excel(writer, sheet_name='code_justifications', index=False)
+            print(f"\nSuccessfully saved updated data to '{output_filepath}'")
+            logging.info(f"Saved updated codings and definitions to '{output_filepath}'")
+        except Exception as e:
+            print(f"\nError saving the updated Excel file: {e}")
+            logging.error(f"Failed to save updated Excel file '{output_filepath}': {e}")
 
     # Stage 3 - Part 2
     elif client_flag == "generate_code_stats":
@@ -614,10 +833,6 @@ def perform_thematic_analysis(directory, batch_size, client_flag):
             for theme, theme_data in meta_theme_data.get("themes", {}).items():
 
                 # --- Prepare data for the current theme (construct) ---
-                if theme=='Career Outlook':
-                    pass
-                if theme=='Help society':
-                    pass
                 # 1. Get current theme data and sub-theme information.
                 current_theme_data = [t for t in themes if t['theme'] == theme]
                 if not current_theme_data:  # Check if the list is empty
@@ -724,6 +939,7 @@ def main():
         "generate_initial_codes", 
         "verify_initial_codes",
         "generate_full_dataset_codes",
+        "fix_dataset_codes",
         "generate_code_stats",
         "merge_codes",
         "replace_merged_codes",
