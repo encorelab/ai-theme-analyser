@@ -502,7 +502,7 @@ def visualize_individual_theme_subgraphs(themes_hierarchy, output_dir="theme_sub
 
     # --- Scaling parameters (adjust these as needed) ---
     scaling_factor = 2000  # Controls how much the frequency affects the size
-    base_size = 400  # Minimum size of a node
+    base_size = 200  # Minimum size of a node
 
     def get_node_size(frequency):
         """Calculates node size based on frequency using a logarithmic scale."""
@@ -556,17 +556,18 @@ def visualize_individual_theme_subgraphs(themes_hierarchy, output_dir="theme_sub
 
             # Draw and save the subgraph
             plt.figure(figsize=(24, 8))
-            pos = nx.spring_layout(graph, k=0.3)
+            pos = nx.spring_layout(graph, k=0.5)
             nx.draw(graph,
                     pos,
                     labels=node_labels,
                     with_labels=True,
                     node_size=[d['size'] for n, d in graph.nodes(data=True)],
                     node_color=[node_colors[node] for node in graph.nodes()],
-                    font_size=10,
+                    font_size=15,
                     font_weight="bold",
                     arrowsize=20)
             plt.title(f"Subgraph for Theme: {theme}\n(Meta-Theme: {meta_theme})")
+            plt.margins(x=0.15) # Adds 15% padding on right/left sides
             plt.savefig(filepath)
             plt.close()
 

@@ -7,3 +7,6 @@ matplotlib
 networkx
 scipy
 tiktoken
+thefuzz
+python-Levenshtein
+pathlib
